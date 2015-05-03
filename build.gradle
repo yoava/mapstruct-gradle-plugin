@@ -12,3 +12,8 @@ dependencies {
     compile gradleApi()
     compile localGroovy()
 }
+
+// wrapper task
+task wrapper(type: Wrapper) {
+    gradleVersion = '2.3'
+}
