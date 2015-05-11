@@ -1,47 +1,52 @@
 package org.mapstruct
 
-import org.gradle.api.tasks.TaskAction
 import org.gradle.api.tasks.compile.JavaCompile
-
-import static org.apache.commons.lang.StringUtils.defaultIfEmpty
+import org.gradle.api.tasks.incremental.IncrementalTaskInputs
 
 /**
  * @author Yoav Aharoni
  */
 class MapstructCompileTask extends JavaCompile {
-    @TaskAction
-    protected void mapstruct() {
-        ext.aptDumpDir = file("${buildDir}/tmp/apt/mapstruct")
-        destinationDir = aptDumpDir;
+    MapstructCompileTask() {
+        def mapstructGeneratedSourcesDir = project.sourceSets.main.mapstructGeneratedSourcesDir
 
-        classpath = compileJava.classpath + configurations.mapstruct
-        setSource(sourceSets.main.originalJavaSrcDirs)
-        ext.sourceDestDir = file(project.ext.generatedMapperSourcesDir)
+        ext.aptTempDir = project.file("${project.buildDir}/tmp/apt/mapstruct")
+        ext.generatedSourcesDir = project.file(mapstructGeneratedSourcesDir)
 
-        def source = defaultIfEmpty(project.mapstruct.javaSourceVersion, project.sourceCompatibility)
-        def target = defaultIfEmpty(project.mapstruct.target, javaTargetVersion.targetCompatibility)
+        // set compile task folders
+        setSource(project.sourceSets.main.ext.originalJavaSrcDirs);
+        destinationDir = aptTempDir;
+        classpath = project.tasks.compileJava.classpath + project.configurations.mapstruct
+        inputs.dir source
+        outputs.dir mapstructGeneratedSourcesDir;
+    }
 
+    @Override
+    protected void compile(IncrementalTaskInputs inputs) {
+        // define compiler arguments
+        def mapstruct = project.mapstruct
+        def sourceCompatibility = defaultIfEmpty(mapstruct.javaSourceVersion, project.sourceCompatibility)
+        def targetCompatibility = defaultIfEmpty(mapstruct.javaTargetVersion, project.targetCompatibility)
         options.define(
                 compilerArgs: [
-                        "-Amapstruct.defaultComponentModel=${project.mapstruct.defaultComponentModel}",
+                        "-Amapstruct.defaultComponentModel=${mapstruct.defaultComponentModel}",
                         "-nowarn",
                         "-proc:only",
-                        "-encoding", project.mapstruct.enconding,
+                        "-encoding", mapstruct.enconding,
                         "-processor", "org.mapstruct.ap.MappingProcessor",
-                        "-s", ext.sourceDestDir.absolutePath,
-                        "-source", source,
-                        "-target", target,
+                        "-s", generatedSourcesDir.absolutePath,
+                        "-source", sourceCompatibility,
+                        "-target", targetCompatibility,
                 ]
         );
 
-        inputs.dir source
-        outputs.dir project.ext.generatedMapperSourcesDir;
+        // execute mapstruct compiler
+        generatedSourcesDir.mkdirs()
+        super.compile(inputs)
+        aptTempDir.delete()
+    }
 
-        doFirst {
-            sourceDestDir.mkdirs()
-        }
-        doLast {
-            aptDumpDir.delete()
-        }
+    public static String defaultIfEmpty(String str, Object defaultStr) {
+        return str != null && !str.isEmpty() ? str : defaultStr == null ? null : defaultStr.toString();
     }
 }

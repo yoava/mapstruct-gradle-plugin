@@ -10,23 +10,19 @@ import org.gradle.api.Task
 class MapstructPlugin implements Plugin<Project> {
 
     void apply(Project project) {
-        def extension = project.extensions.create("mapstruct", MapstructPluginExtension)
         project.pluginManager.apply 'java'
 
-        def main = project.sourceSets.main
-        def generatedMapperSourcesDir = "${project.buildDir}/generated-src/mapstruct/main"
-        project.sourceSets.main {
-            ext.generatedMapperSourcesDir = generatedMapperSourcesDir
-            ext.originalJavaSrcDirs = main.java.srcDirs
-            java.srcDir generatedMapperSourcesDir
-        }
+        def extension = project.extensions.create("mapstruct", MapstructPluginExtension)
+        def mapstructGeneratedSourcesDir = "${project.buildDir}/generated-src/mapstruct/main"
 
-        // define mapstruct task
-        Task mapstructTask = project.task([
-                type       : MapstructCompileTask,
-                description: 'Generate Mapstruct ',
-                group      : 'mapstruct'
-        ], "mapstruct");
+        project.sourceSets.main {
+            // save original java.srcDirs
+            ext.originalJavaSrcDirs = project.sourceSets.main.java.srcDirs
+            ext.mapstructGeneratedSourcesDir = mapstructGeneratedSourcesDir
+
+            // add mapstructGeneratedSourcesDir to java.srcDirs
+            java.srcDir mapstructGeneratedSourcesDir
+        }
 
         // define mapstruct dependencies
         project.configurations {
@@ -37,6 +33,13 @@ class MapstructPlugin implements Plugin<Project> {
             compile "org.mapstruct:mapstruct:${extension.version}"
             mapstruct "org.mapstruct:mapstruct-processor:${extension.version}"
         }
+
+        // define mapstruct task
+        Task mapstructTask = project.task([
+                type       : MapstructCompileTask,
+                description: 'Generate Mapstruct ',
+                group      : 'mapstruct'
+        ], "mapstruct");
 
         // execute mapstructTask when compileJava is executed
         project.compileJava.dependsOn mapstructTask
