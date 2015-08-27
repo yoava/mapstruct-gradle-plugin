@@ -29,9 +29,11 @@ class MapstructPlugin implements Plugin<Project> {
             mapstruct
         }
 
-        project.dependencies {
-            compile "org.mapstruct:mapstruct:${extension.version}"
-            mapstruct "org.mapstruct:mapstruct-processor:${extension.version}"
+        project.gradle.taskGraph.whenReady {
+            project.dependencies {
+                compile "org.mapstruct:mapstruct:${extension.version}"
+                mapstruct "org.mapstruct:mapstruct-processor:${extension.version}"
+            }
         }
 
         // define mapstruct task
